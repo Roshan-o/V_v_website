@@ -73,7 +73,7 @@ async def run_pipeline(job_id: str, video_path: str):
         # For now, let's try the sarvam one if provided in code, else maybe we should have a way to pass it.
         # The user's code had "sk_omffrun1_uVmCyExpF9xp9Atcfni45GS4"
         sarvam_api_key = "sk_omffrun1_uVmCyExpF9xp9Atcfni45GS4" 
-        textConversion(src_text_path, dst_text_path).convert_with_sarvam(sarvam_api_key)
+        textConversion(src_text_path, dst_text_path).convert_indictrans2("ai4bharat/indictrans2-en-indic-1B")
         update_job(job_id, "translation", "completed", "translated_text.json")
         
         # Stage 4: Dubbing (TTS + Merge)

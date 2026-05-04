@@ -8,7 +8,11 @@ from sarvamai import SarvamAI
 # from IndicTransToolkit.processor import IndicProcessor
 # indic tans2
 import torch
-hf_token="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"
+import os
+from dotenv import load_dotenv
+load_dotenv()
+hf_token=os.getenv("hf_token")
+sarvam_api_key=os.getenv("sarvam_api_key")
 
 class textConversion:
     def __init__(self, src, dest="output/translated_text.json"):
@@ -100,7 +104,7 @@ class textConversion:
         with open(self.dest, "w", encoding="utf-8") as f:
             json.dump(output, f, ensure_ascii=False, indent=2)
 
-        print("✅ Done")
+        print("Done")
     
     def convert_with_sarvam(self, api_key):
         # from sarvamai import SarvamAI
@@ -144,4 +148,4 @@ class textConversion:
 
 if __name__=="__main__":
     textConversion("output/source_text.json").convert_indictrans2("ai4bharat/indictrans2-en-indic-1B")
-    # textConversion("output/source_text.json").convert_with_sarvam("sk_omffrun1_uVmCyExpF9xp9Atcfni45GS4")
+    # textConversion("output/source_text.json").convert_with_sarvam(sarvam_api_key)
