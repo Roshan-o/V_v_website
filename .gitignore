@@ -1,0 +1,17 @@
+v-v
+backend/__pycache__
+backend/venv
+
+backend/*.mp3
+backend/*.mp4
+backend/*.wav
+backend/output/
+backend/uploads/
+
+frontend copy/build
+
+frontend copy/node_modules
+
+frontend copy/*.env
+
+

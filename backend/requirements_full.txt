@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-multipart
+moviepy
+openai-whisper
+transformers
+sarvamai
+edge-tts
+pydub
+gtts
+aiohttp
+torch
+sentencepiece
