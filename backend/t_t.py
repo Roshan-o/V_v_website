@@ -6,6 +6,7 @@ from transformers import AutoTokenizer
 from transformers import AutoModelForSeq2SeqLM
 from sarvamai import SarvamAI
 # from IndicTransToolkit.processor import IndicProcessor
+# indic tans2
 import torch
 hf_token="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"
 
