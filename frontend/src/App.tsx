@@ -16,6 +16,7 @@ function App() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<JobStatus | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,6 +29,7 @@ function App() {
     setUploading(true);
     setJobId(null);
     setJob(null);
+    setActiveTab('all');
 
     try {
       const response = await axios.post(`${API_BASE_URL}/upload`, formData);
@@ -48,7 +50,7 @@ function App() {
         try {
           const response = await axios.get(`${API_BASE_URL}/jobs/${jobId}`);
           setJob(response.data);
-          
+
           if (response.data.status !== 'processing') {
             clearInterval(interval);
           }
@@ -67,13 +69,13 @@ function App() {
         <div className="stage-header">
           <div className="stage-title">
             {status === 'processing' && <div className="spinner"></div>}
-            {name.replace('_', ' ')}
+            {name === 'translation' ? 'MT (Translation)' : name === 'dubbing' ? 'Text to Audio' : name.replace('_', ' ')}
           </div>
           <div className={`status-badge status-${status}`}>
             {status}
           </div>
         </div>
-        
+
         {status === 'completed' && filePath && (
           <div className="stage-content">
             <div className="preview-box">
@@ -100,23 +102,25 @@ function App() {
     <div className="App">
       <div className="container">
         <header>
-          <h1>Video Dubber AI</h1>
+          <h1>Video to Video translation</h1>
           <p className="subtitle">Seamlessly translate and dub your videos into Telugu</p>
         </header>
 
         {!jobId && (
-          <div 
-            className="upload-card" 
+          <div
+            className="upload-card"
             onClick={() => fileInputRef.current?.click()}
           >
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              style={{ display: 'none' }} 
-              accept="video/*" 
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              accept="video/*"
               onChange={handleFileUpload}
             />
-            <span className="upload-icon">📁</span>
+            <div className="upload-icon-container">
+              <span className="upload-icon">📁</span>
+            </div>
             <span className="upload-text">
               {uploading ? 'Uploading Video...' : 'Click or Drag Video to Upload'}
             </span>
@@ -127,27 +131,82 @@ function App() {
         {jobId && (
           <div className="pipeline">
             <div className="pipeline-header">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3>Processing Pipeline</h3>
-                <button className="btn" onClick={() => { setJobId(null); setJob(null); }}>Start New</button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h3 className="section-title">Processing Pipeline</h3>
+                <button className="btn btn-secondary" onClick={() => { setJobId(null); setJob(null); setActiveTab('all'); }}>Start New</button>
               </div>
               {job?.status === 'error' && (
-                <div className="status-badge status-error" style={{ marginBottom: '1rem', display: 'block' }}>
+                <div className="status-badge status-error" style={{ marginBottom: '1rem', display: 'block', textAlign: 'center' }}>
                   Error: {job.error_message}
                 </div>
               )}
             </div>
 
-            {renderStage('original', 'completed', job?.files['original'])}
-            
-            {Object.entries(job?.stages || {
-              extraction: 'pending',
-              transcription: 'pending',
-              translation: 'pending',
-              dubbing: 'pending'
-            }).map(([name, status]) => 
-              renderStage(name, status, job?.files[name])
-            )}
+            {/* Side by Side Comparison */}
+            <div className="comparison-container">
+              <div className="video-column">
+                <h4>Original Video</h4>
+                <div className="comparison-box">
+                  {job?.files['original'] ? (
+                    <video controls src={`${API_BASE_URL}${job.files['original']}`} />
+                  ) : (
+                    <div className="placeholder-box">Loading...</div>
+                  )}
+                </div>
+              </div>
+              <div className="video-column">
+                <h4>Final Video</h4>
+                <div className="comparison-box">
+                  {job?.files['dubbing'] ? (
+                    <video controls src={`${API_BASE_URL}${job.files['dubbing']}`} />
+                  ) : (
+                    <div className="placeholder-box">
+                      {job?.stages['dubbing'] === 'processing' ? (
+                        <div className="processing-indicator">
+                          <div className="spinner large"></div>
+                          <p>Dubbing in progress...</p>
+                        </div>
+                      ) : (
+                        <p>Awaiting Dubbing...</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Module Tabs */}
+            <div className="tabs-container">
+              {['all', 'extraction', 'transcription', 'translation', 'dubbing'].map((tab) => (
+                <button
+                  key={tab}
+                  className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab === 'all' ? 'All Steps' : 
+                   tab === 'translation' ? 'MT' : 
+                   tab === 'dubbing' ? 'Text to Audio' : 
+                   tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            <div className="tab-content">
+              {activeTab === 'all' ? (
+                <>
+                  {Object.entries(job?.stages || {
+                    extraction: 'pending',
+                    transcription: 'pending',
+                    translation: 'pending',
+                    dubbing: 'pending'
+                  }).map(([name, status]) =>
+                    renderStage(name, status, job?.files[name])
+                  )}
+                </>
+              ) : (
+                renderStage(activeTab, job?.stages[activeTab] || 'pending', job?.files[activeTab])
+              )}
+            </div>
           </div>
         )}
       </div>
