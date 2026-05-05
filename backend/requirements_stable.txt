@@ -190,3 +190,7 @@ websockets==16.0
 Werkzeug==3.1.8
 wrapt==2.1.2
 yarl==1.23.0
+
+
+pip install git+https://github.com/huggingface/parler-tts.git transformers
+

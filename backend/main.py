@@ -55,6 +55,7 @@ async def run_pipeline(job_id: str, video_path: str):
     dst_text_path = os.path.join(job_dir, "translated_text.json")
     final_audio_path = os.path.join(job_dir, "final_telugu_audio.wav")
     output_video_path = os.path.join(job_dir, "output_video.mp4")
+    src_audio_file=os.path.join(job_dir, "extracted_audio.wav")
     
     try:
         # Stage 1: Extraction
@@ -79,7 +80,7 @@ async def run_pipeline(job_id: str, video_path: str):
         # Stage 4: Dubbing (TTS + Merge)
         update_job(job_id, "dubbing", "processing")
         # AudioTOVideo(json_file, final_audio_file, video_file, output_video)
-        AudioTOVideo(dst_text_path, final_audio_path, video_path, output_video_path).convert()
+        AudioTOVideo(dst_text_path, final_audio_path, video_path, output_video_path,src_audio_file).convert()
         update_job(job_id, "dubbing", "completed", "output_video.mp4")
         
         jobs[job_id]["status"] = "completed"
