@@ -4,7 +4,7 @@ import json
 import shutil
 import asyncio
 from typing import Dict, List
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -45,7 +45,7 @@ def update_job(job_id: str, stage: str, status: str, filename: str = None):
     if all(s == "completed" for s in jobs[job_id]["stages"].values()):
         jobs[job_id]["status"] = "completed"
 
-async def run_pipeline(job_id: str, video_path: str):
+async def run_pipeline(job_id: str, video_path: str, src_language: str, target_language: str, gender: str):
     job_dir = os.path.join(UPLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
     
@@ -74,13 +74,16 @@ async def run_pipeline(job_id: str, video_path: str):
         # For now, let's try the sarvam one if provided in code, else maybe we should have a way to pass it.
         # The user's code had "sk_omffrun1_uVmCyExpF9xp9Atcfni45GS4"
         sarvam_api_key = "sk_omffrun1_uVmCyExpF9xp9Atcfni45GS4" 
-        textConversion(src_text_path, dst_text_path).convert_indictrans2("ai4bharat/indictrans2-en-indic-1B")
+        textConversion(src_text_path, dst_text_path).convert()
         update_job(job_id, "translation", "completed", "translated_text.json")
         
         # Stage 4: Dubbing (TTS + Merge)
         update_job(job_id, "dubbing", "processing")
         # AudioTOVideo(json_file, final_audio_file, video_file, output_video)
-        AudioTOVideo(dst_text_path, final_audio_path, video_path, output_video_path,src_audio_file).convert()
+        AudioTOVideo(dst_text_path, final_audio_path, video_path, output_video_path,src_audio_file).convert_with_svara_tts(
+            default_language=target_language, 
+            default_gender=gender
+        )
         update_job(job_id, "dubbing", "completed", "output_video.mp4")
         
         jobs[job_id]["status"] = "completed"
@@ -91,7 +94,13 @@ async def run_pipeline(job_id: str, video_path: str):
         jobs[job_id]["error_message"] = str(e)
 
 @app.post("/upload")
-async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+async def upload_video(
+    background_tasks: BackgroundTasks, 
+    file: UploadFile = File(...),
+    src_language: str = Form("English"),
+    target_language: str = Form("Telugu"),
+    gender: str = Form("Female")
+):
     job_id = str(uuid.uuid4())
     job_dir = os.path.join(UPLOAD_DIR, job_id)
     os.makedirs(job_dir, exist_ok=True)
@@ -114,7 +123,7 @@ async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = Fil
         }
     }
     
-    background_tasks.add_task(run_pipeline, job_id, video_path)
+    background_tasks.add_task(run_pipeline, job_id, video_path, src_language, target_language, gender)
     
     return {"job_id": job_id}
 

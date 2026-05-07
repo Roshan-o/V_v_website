@@ -17,6 +17,9 @@ function App() {
   const [job, setJob] = useState<JobStatus | null>(null);
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('all');
+  const [srcLanguage, setSrcLanguage] = useState<string>('English');
+  const [targetLanguage, setTargetLanguage] = useState<string>('Telugu');
+  const [gender, setGender] = useState<string>('Female');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,6 +28,9 @@ function App() {
 
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('src_language', srcLanguage);
+    formData.append('target_language', targetLanguage);
+    formData.append('gender', gender);
 
     setUploading(true);
     setJobId(null);
@@ -105,6 +111,66 @@ function App() {
           <h1>Video to Video translation</h1>
           <p className="subtitle">Seamlessly translate and dub your videos into Telugu</p>
         </header>
+
+        {!jobId && (
+          <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '30px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+              <label style={{ marginBottom: '5px', fontWeight: 'bold', color: '#555' }}>Source Language</label>
+              <select 
+                value={srcLanguage} 
+                onChange={(e) => setSrcLanguage(e.target.value)} 
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', minWidth: '120px' }}
+              >
+                <option value="English">English</option>
+                <option value="Hindi">Hindi</option>
+                <option value="Telugu">Telugu</option>
+                <option value="Tamil">Tamil</option>
+                <option value="Kannada">Kannada</option>
+                <option value="Malayalam">Malayalam</option>
+                <option value="Marathi">Marathi</option>
+                <option value="Gujarati">Gujarati</option>
+                <option value="Bengali">Bengali</option>
+                <option value="Punjabi">Punjabi</option>
+                <option value="Odia">Odia</option>
+                <option value="Urdu">Urdu</option>
+                <option value="Assamese">Assamese</option>
+                <option value="Nepali">Nepali</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+              <label style={{ marginBottom: '5px', fontWeight: 'bold', color: '#555' }}>Target Language</label>
+              <select 
+                value={targetLanguage} 
+                onChange={(e) => setTargetLanguage(e.target.value)} 
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', minWidth: '120px' }}
+              >
+                <option value="English">English</option>
+                <option value="Hindi">Hindi</option>
+                <option value="Telugu">Telugu</option>
+                <option value="Tamil">Tamil</option>
+                <option value="Kannada">Kannada</option>
+                <option value="Malayalam">Malayalam</option>
+                <option value="Marathi">Marathi</option>
+                <option value="Gujarati">Gujarati</option>
+                <option value="Bengali">Bengali</option>
+                <option value="Punjabi">Punjabi</option>
+                <option value="Odia">Odia</option>
+                <option value="Urdu">Urdu</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+              <label style={{ marginBottom: '5px', fontWeight: 'bold', color: '#555' }}>Voice Gender</label>
+              <select 
+                value={gender} 
+                onChange={(e) => setGender(e.target.value)} 
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', minWidth: '120px' }}
+              >
+                <option value="Female">Female</option>
+                <option value="Male">Male</option>
+              </select>
+            </div>
+          </div>
+        )}
 
         {!jobId && (
           <div
