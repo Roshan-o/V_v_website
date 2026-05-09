@@ -16,6 +16,7 @@ function App() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<JobStatus | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('all');
   const [srcLanguage, setSrcLanguage] = useState<string>('English');
   const [targetLanguage, setTargetLanguage] = useState<string>('Telugu');
@@ -48,10 +49,40 @@ function App() {
     }
   };
 
+  const convert = async () => {
+    if (!jobId) return;
+    setIsProcessing(true);
+    try {
+      await axios.post(`${API_BASE_URL}/convert/${jobId}`);
+      const response = await axios.get(`${API_BASE_URL}/jobs/${jobId}`);
+      setJob(response.data);
+    } catch (error) {
+      console.error('Conversion failed:', error);
+      alert('Failed to start conversion.');
+      setIsProcessing(false);
+    }
+  };
+
+  const stop = async () => {
+    if (!jobId) return;
+    try {
+      await axios.post(`${API_BASE_URL}/jobs/${jobId}/stop`);
+      setIsProcessing(false);
+    } catch (error) {
+      console.error('Stop failed:', error);
+    }
+  };
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
-    if (jobId && (!job || job.status === 'processing')) {
+    const shouldPoll = jobId && (
+      !job || 
+      job.status === 'processing' || 
+      (job.status === 'waiting_for_conversion' && job.stages.extraction === 'processing')
+    );
+
+    if (shouldPoll && job?.status !== 'cancelled') {
       interval = setInterval(async () => {
         try {
           const response = await axios.get(`${API_BASE_URL}/jobs/${jobId}`);
@@ -74,8 +105,8 @@ function App() {
       <div className="stage-card" key={name}>
         <div className="stage-header">
           <div className="stage-title">
-            {status === 'processing' && <div className="spinner"></div>}
-            {name === 'translation' ? 'MT (Translation)' : name === 'dubbing' ? 'Text to Audio' : name.replace('_', ' ')}
+        {status === 'processing' && <div className="spinner"></div>}
+        {name === 'translation' ? 'Translation' : name === 'dubbing' ? 'Audio Generation' : name.replace('_', ' ')}
           </div>
           <div className={`status-badge status-${status}`}>
             {status}
@@ -100,6 +131,18 @@ function App() {
             </div>
           </div>
         )}
+
+        {name === 'transcription' && status === 'pending' && job?.status === 'waiting_for_conversion' && (
+          <div className="stage-content" style={{ paddingTop: '0.5rem' }}>
+            <button 
+              className="btn btn-small" 
+              onClick={convert} 
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Processing...' : 'Start Processing'}
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -107,124 +150,94 @@ function App() {
   return (
     <div className="App">
       <div className="container">
-        <header>
-          <h1>Video to Video translation</h1>
-          <p className="subtitle">Seamlessly translate and dub your videos into Telugu</p>
+        <header style={{ marginBottom: '1rem' }}>
+          <h1 style={{ fontSize: '1.5rem', margin: 0 }}>Video Translation</h1>
+          <p style={{ fontSize: '0.9rem', color: '#666', margin: 0 }}>Translate and dub videos</p>
         </header>
 
-        {!jobId && (
-          <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '30px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-              <label style={{ marginBottom: '5px', fontWeight: 'bold', color: '#555' }}>Source Language</label>
-              <select 
-                value={srcLanguage} 
-                onChange={(e) => setSrcLanguage(e.target.value)} 
-                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', minWidth: '120px' }}
-              >
-                <option value="English">English</option>
-                <option value="Hindi">Hindi</option>
-                <option value="Telugu">Telugu</option>
-                <option value="Tamil">Tamil</option>
-                <option value="Kannada">Kannada</option>
-                <option value="Malayalam">Malayalam</option>
-                <option value="Marathi">Marathi</option>
-                <option value="Gujarati">Gujarati</option>
-                <option value="Bengali">Bengali</option>
-                <option value="Punjabi">Punjabi</option>
-                <option value="Odia">Odia</option>
-                <option value="Urdu">Urdu</option>
-                <option value="Assamese">Assamese</option>
-                <option value="Nepali">Nepali</option>
-              </select>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-              <label style={{ marginBottom: '5px', fontWeight: 'bold', color: '#555' }}>Target Language</label>
-              <select 
-                value={targetLanguage} 
-                onChange={(e) => setTargetLanguage(e.target.value)} 
-                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', minWidth: '120px' }}
-              >
-                <option value="English">English</option>
-                <option value="Hindi">Hindi</option>
-                <option value="Telugu">Telugu</option>
-                <option value="Tamil">Tamil</option>
-                <option value="Kannada">Kannada</option>
-                <option value="Malayalam">Malayalam</option>
-                <option value="Marathi">Marathi</option>
-                <option value="Gujarati">Gujarati</option>
-                <option value="Bengali">Bengali</option>
-                <option value="Punjabi">Punjabi</option>
-                <option value="Odia">Odia</option>
-                <option value="Urdu">Urdu</option>
-              </select>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-              <label style={{ marginBottom: '5px', fontWeight: 'bold', color: '#555' }}>Voice Gender</label>
-              <select 
-                value={gender} 
-                onChange={(e) => setGender(e.target.value)} 
-                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', minWidth: '120px' }}
-              >
-                <option value="Female">Female</option>
-                <option value="Male">Male</option>
-              </select>
-            </div>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+          <select value={srcLanguage} onChange={(e) => setSrcLanguage(e.target.value)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ccc' }}>
+            {['English', 'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Marathi', 'Malayalam', 'Kannada', 'Gujarati', 'Punjabi', 'Urdu', 'Odia', 'Assamese', 'Nepali', 'Sanskrit', 'Sindhi'].map(lang => (
+              <option key={lang} value={lang}>{lang}</option>
+            ))}
+          </select>
+          <span style={{ alignSelf: 'center' }}>to</span>
+          <select value={targetLanguage} onChange={(e) => setTargetLanguage(e.target.value)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ccc' }}>
+            {['Telugu', 'English', 'Hindi', 'Tamil', 'Kannada', 'Malayalam', 'Marathi', 'Gujarati', 'Bengali', 'Punjabi', 'Odia', 'Urdu'].map(lang => (
+              <option key={lang} value={lang}>{lang}</option>
+            ))}
+          </select>
+          <select value={gender} onChange={(e) => setGender(e.target.value)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ccc' }}>
+            <option value="Female">Female</option>
+            <option value="Male">Male</option>
+          </select>
+          {jobId && <button className="btn btn-secondary btn-small" onClick={() => { setJobId(null); setJob(null); setActiveTab('all'); setIsProcessing(false); }}>New</button>}
+        </div>
 
-        {!jobId && (
-          <div
-            className="upload-card"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-              accept="video/*"
-              onChange={handleFileUpload}
-            />
-            <div className="upload-icon-container">
-              <span className="upload-icon">📁</span>
+        <div className="upload-card" style={{ padding: jobId ? '1rem' : '2rem' }}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            accept="video/*"
+            onChange={handleFileUpload}
+          />
+          
+          {!jobId ? (
+            <div onClick={() => fileInputRef.current?.click()}>
+              <div className="upload-icon-container">
+                <span>{uploading ? '...' : 'Upload'}</span>
+              </div>
+              <span className="upload-text">
+                {uploading ? 'Uploading...' : 'Select Video'}
+              </span>
             </div>
-            <span className="upload-text">
-              {uploading ? 'Uploading Video...' : 'Click or Drag Video to Upload'}
-            </span>
-            <span className="upload-hint">MP4, MOV supported. Max 50MB suggested.</span>
+          ) : (
+            <div className="preview-container" style={{ display: 'flex', justifyContent: 'center' }}>
+              {job?.files['original'] ? (
+                <video controls src={`${API_BASE_URL}${job.files['original']}`} style={{ maxHeight: '200px', maxWidth: '100%', borderRadius: '8px' }} />
+              ) : (
+                <div className="placeholder-box">Loading preview...</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {job?.status === 'waiting_for_conversion' && (
+          <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <button 
+              className="btn" 
+              onClick={convert}
+              disabled={isProcessing}
+              style={{ width: '100%', maxWidth: '400px' }}
+            >
+              {isProcessing ? 'Processing...' : 'Start Processing'}
+            </button>
           </div>
         )}
 
         {jobId && (
           <div className="pipeline">
             <div className="pipeline-header">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h3 className="section-title">Processing Pipeline</h3>
-                <button className="btn btn-secondary" onClick={() => { setJobId(null); setJob(null); setActiveTab('all'); }}>Start New</button>
-              </div>
               {job?.status === 'error' && (
-                <div className="status-badge status-error" style={{ marginBottom: '1rem', display: 'block', textAlign: 'center' }}>
-                  Error: {job.error_message}
+                <div className="status-badge status-error" style={{ marginBottom: '1rem' }}>
+                  {job.error_message}
+                </div>
+              )}
+              {(isProcessing || job?.status === 'processing') && (
+                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                  <button className="btn btn-secondary btn-small" onClick={stop}>Stop Processing</button>
                 </div>
               )}
             </div>
 
-            {/* Side by Side Comparison */}
-            <div className="comparison-container">
+            {/* Final Result Preview */}
+            <div className="comparison-container" style={{ gridTemplateColumns: '1fr' }}>
               <div className="video-column">
-                <h4>Original Video</h4>
-                <div className="comparison-box">
-                  {job?.files['original'] ? (
-                    <video controls src={`${API_BASE_URL}${job.files['original']}`} />
-                  ) : (
-                    <div className="placeholder-box">Loading...</div>
-                  )}
-                </div>
-              </div>
-              <div className="video-column">
-                <h4>Final Video</h4>
-                <div className="comparison-box">
+                <h4>Generated Video</h4>
+                <div className="comparison-box" style={{ maxHeight: '300px' }}>
                   {job?.files['dubbing'] ? (
-                    <video controls src={`${API_BASE_URL}${job.files['dubbing']}`} />
+                    <video controls src={`${API_BASE_URL}${job.files['dubbing']}`} style={{ maxHeight: '100%', width: 'auto' }} />
                   ) : (
                     <div className="placeholder-box">
                       {job?.stages['dubbing'] === 'processing' ? (
@@ -233,7 +246,7 @@ function App() {
                           <p>Dubbing in progress...</p>
                         </div>
                       ) : (
-                        <p>Awaiting Dubbing...</p>
+                        <p>Awaiting Results...</p>
                       )}
                     </div>
                   )}

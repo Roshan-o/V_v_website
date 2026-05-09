@@ -15,42 +15,77 @@ hf_token=os.getenv("hf_token")
 sarvam_api_key=os.getenv("sarvam_api_key")
 
 class textConversion:
-    def __init__(self, src, dest="output/translated_text.json"):
+    def __init__(self, src, dest="output/translated_text.json", src_language="English", target_language="Telugu"):
         self.src = src
         self.dest = dest
+        self.src_language = src_language
+        self.target_language = target_language
+        
+        # NLLB language code mapping
+        self.nllb_lang_map = {
+            "English": "eng_Latn",
+            "Hindi": "hin_Deva",
+            "Telugu": "tel_Telu",
+            "Tamil": "tam_Taml",
+            "Kannada": "kan_Knda",
+            "Malayalam": "mal_Mlym",
+            "Marathi": "mar_Deva",
+            "Bengali": "ben_Beng",
+            "Gujarati": "guj_Gujr",
+            "Punjabi": "pan_Guru",
+            "Odia": "ory_Orya",
+            "Urdu": "urd_Arab",
+            "Assamese": "asm_Beng",
+            "Nepali": "npi_Deva"
+        }
     
-    def convert(self,model_name="facebook/nllb-200-distilled-600M"):
-        # trans_txt="translated_text.json"
-        with open(self.src,"r") as f:
-            data=json.load(f)
-        # model_name = "facebook/nllb-200-distilled-600M"
+    def convert(self, model_name="facebook/nllb-200-distilled-600M"):
+        with open(self.src, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            
         tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token, trust_remote_code=True)
         model = AutoModelForSeq2SeqLM.from_pretrained(model_name, token=hf_token, trust_remote_code=True)
-        src_text=[]
-        for i in data:
-            src_text.append(i["text"])
+        
+        src_text = [i["text"] for i in data]
 
-        tokenizer.src_lang = "en"
-        # encoded = tokenizer(src_text, return_tensors="pt")
+        # Get NLLB codes with case-insensitive lookup
+        src_key = self.src_language.strip().capitalize()
+        tgt_key = self.target_language.strip().capitalize()
+        
+        src_code = self.nllb_lang_map.get(src_key, "eng_Latn")
+        tgt_code = self.nllb_lang_map.get(tgt_key, "tel_Telu")
+        
+        print(f"Translating from {self.src_language} ({src_code}) to {self.target_language} ({tgt_code})")
+
+
+        tokenizer.src_lang = src_code
         encoded = tokenizer(
             src_text,
             return_tensors="pt",
             padding=True,
             truncation=True
         )
-        # print(tokenizer.lang_code_to_token.keys())
+        
         generated_tokens = model.generate(
             **encoded,
-            forced_bos_token_id=tokenizer.convert_tokens_to_ids("tel_Telu")
+            forced_bos_token_id=tokenizer.convert_tokens_to_ids(tgt_code)
         )
-        translated_text = tokenizer.batch_decode(generated_tokens,
-                                                 skip_special_tokens=True)
-        trans_seg=[]
+        
+        translated_text = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+        
+        trans_seg = []
         for i in range(len(translated_text)):
-            trans_seg.append({"start":data[i]["start"],"end":data[i]["end"],"text":translated_text[i]})
+            trans_seg.append({
+                "start": data[i]["start"],
+                "end": data[i]["end"],
+                "text": translated_text[i]
+            })
+            
         with open(self.dest, "w", encoding="utf-8") as f:
             json.dump(trans_seg, f, ensure_ascii=False, indent=2)
+            
         return trans_seg
+
 
     def convert_indictrans2(self,model_name="ai4bharat/indictrans2-en-indic-1B"):
         
